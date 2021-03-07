@@ -27,6 +27,12 @@ namespace UserAPI.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<UserModel>>> GetUsers()
         {
+            //[pqa] Return only the user's with usertype "User"
+            if (User.IsInRole(Policy.User))
+            {
+                return await _context.Users.Where(e => e.UserType == UserTypes.User).ToListAsync();
+            }
+                
             return await _context.Users.ToListAsync();
         }
 
@@ -131,7 +137,9 @@ namespace UserAPI.Controllers
                 return NotFound();
             }
 
-            _context.Users.Remove(userModel);
+            userModel.Status = 0;
+
+            //_context.Users.Remove(userModel);
             await _context.SaveChangesAsync();
 
             return NoContent();
