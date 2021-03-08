@@ -58,9 +58,11 @@ namespace UserAPI.Controllers
                 //[pqa] If database is NOT empty, evaluate the username and password against the value in the database.
                 var reqUser = _context.Users.SingleOrDefault(e => e.UserName == login.UserName);
                 if (reqUser!=null) { 
-                    if (Cipher.Decrypt(reqUser.Password, reqUser.Email) == login.Password)
-                    {
-                        user = new AuthModel { UserName = login.UserName, Email = reqUser.Email, UserType = reqUser.UserType, Status = reqUser.Status };
+                    if (reqUser.Status!=0) { 
+                        if (Cipher.Decrypt(reqUser.Password, reqUser.Email) == login.Password)
+                        {
+                            user = new AuthModel { UserName = login.UserName, Email = reqUser.Email, UserType = reqUser.UserType, Status = reqUser.Status };
+                        }
                     }
                 }
             } 

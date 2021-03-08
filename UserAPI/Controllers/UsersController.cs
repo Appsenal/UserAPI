@@ -27,23 +27,116 @@ namespace UserAPI.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<UserModel>>> GetUsers()
         {
+            //[pqa] Prepare the query that will not return deleted users.
+            IQueryable<UserModel> query = _context.Users.Where(e => e.Status != 0);
+
             //[pqa] Return only the user's with usertype "User"
             if (User.IsInRole(Policy.User))
             {
-                return await _context.Users.Where(e => e.UserType == UserTypes.User).ToListAsync();
+                query = query.Where(e => e.UserType == UserTypes.User);
+                /*return await _context.Users
+                    .Where(e => e.UserType == UserTypes.User)
+                    .Where(e => e.Status != 0)
+                    .ToListAsync();*/
             }
-                
-            return await _context.Users.ToListAsync();
+
+            //return await _context.Users.ToListAsync();
+            return await query.ToListAsync();
         }
 
         // GET: api/Users/5
         [Authorize]
         [HttpGet("{id}")]
-        public async Task<ActionResult<UserModel>> GetUserModel(long id)
+        //public async Task<ActionResult<UserModel>> GetUserModel(long id)
+        public async Task<ActionResult<IEnumerable<UserModel>>> GetUserModel(long id)
         {
-            var userModel = await _context.Users.FindAsync(id);
+            //[pqa] Prepare the query that will not return deleted users.
+            IQueryable<UserModel> query = _context.Users
+                .Where(e => e.Status != 0)
+                .Where(e => e.Id == id); 
 
-            if (userModel == null)
+            //[pqa] Return only the user's with usertype is "User"
+            if (User.IsInRole(Policy.User))
+            {
+                query = query.Where(e => e.UserType == UserTypes.User);
+            }
+
+            //[pqa] Put the result in the variable so that we can check it if is returning anything
+            var userModel = await query.ToListAsync();
+
+            if (userModel.Count()== 0)
+            {
+                return NotFound();
+            }
+
+            return userModel;
+        }
+
+        // GET: api/Users/UserTypes/Admin
+        [Authorize]
+        [HttpGet("UserTypes/{userType}")]
+        public async Task<ActionResult<IEnumerable<UserModel>>> GetByUserType(UserTypes userType)
+        {
+            //[pqa] Prepare the query that will not return deleted users.
+            IQueryable<UserModel> query = _context.Users.Where(e => e.Status != 0);
+
+            //[pqa] Return only the user's if usertype is "User"
+            if (User.IsInRole(Policy.User))
+            {
+                if (userType == UserTypes.User) {
+                    query = query.Where(e => e.UserType == userType);
+                }
+                else
+                {
+                    //[pqa] If the user type is "User" and the search is not "User" it should not return anything.
+                    return Unauthorized();
+                }
+            }
+            else 
+            {
+                query = query.Where(e => e.UserType == userType);
+            }
+
+            //[pqa] Put the result in the variable so that we can check it if is returning anything
+            var userModel = await query.ToListAsync();
+
+            if (userModel.Count() == 0)
+            {
+                return NotFound();
+            }
+
+            return userModel;
+        }
+
+        // GET: api/Users/UserTypes/Admin
+        [Authorize]
+        [HttpGet("Search/{searchKey}")]
+        public async Task<ActionResult<IEnumerable<UserModel>>> Search(string searchKey, [FromQuery] int? pageNumber, [FromQuery] int? pageSize)
+        {
+            //int _pageNumber = pageNumber.HasValue ? pageNumber.Value : 0;
+            //int _pageSize = pageSize.HasValue ? pageSize.Value : 0;
+
+            //[pqa] Prepare the query that will not return deleted users.
+            IQueryable <UserModel> query = _context.Users.Where(e => e.Status != 0);
+
+            query = query.Where(u => u.FirstName.Contains(searchKey) || u.LastName.Contains(searchKey) || u.Email.Contains(searchKey));
+
+            //[pqa] Return only the user's if usertype is "User"
+            if (User.IsInRole(Policy.User))
+            {
+                query = query.Where(e => e.UserType == UserTypes.User);
+            }
+
+            //[pqa] Pagination thingy.
+            if (pageNumber.HasValue && pageSize.HasValue)
+            {
+                query = Paginate.PagedQuery(pageNumber.Value, pageSize.Value, query);
+            }
+
+            //[pqa] Put the result in the variable so that we can check it if is returning anything
+            var userModel = await query.ToListAsync();
+
+            if (userModel.Count() == 0)
             {
                 return NotFound();
             }
@@ -115,11 +208,11 @@ namespace UserAPI.Controllers
         [HttpPost]
         public async Task<ActionResult<UserModel>> PostUserModel(UserModel userModel)
         {
-            //var currentUser = HttpContext.User;
-            //currentUser.Identity.
+            //[pqa] Encrypt password and add the created time/by details.
             userModel.Password = Cipher.Encrypt(userModel.Password, userModel.Email);
             userModel.CreatedTime = DateTime.Now;
-            userModel.CreatedBy = User.Identity.Name; //currentUser.Identity.Name; //currentUser.Claims.FirstOrDefault(e=>e.Type=="Sub").Value;
+            userModel.CreatedBy = User.Identity.Name; 
+
             _context.Users.Add(userModel);
             await _context.SaveChangesAsync();
 
@@ -137,6 +230,7 @@ namespace UserAPI.Controllers
                 return NotFound();
             }
 
+            //[pqa] Soft delete. Just set status to zero.
             userModel.Status = 0;
 
             //_context.Users.Remove(userModel);
