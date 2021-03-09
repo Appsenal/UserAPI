@@ -3,15 +3,16 @@ using Microsoft.AspNetCore.Mvc;
 //using System;
 //using System.Collections.Generic;
 //using System.Linq;
-//using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 //using System.IdentityModel.Tokens.Jwt;
 using Microsoft.Extensions.Configuration;
 using UserAPI.Models;
-//using Microsoft.IdentityModel.Tokens;
 //using System.Text;
 //using System.Security.Claims;
 using UserAPI.Utility;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.IdentityModel.Tokens;
 //using System.Numerics;
 
 namespace UserAPI.Controllers
@@ -20,13 +21,13 @@ namespace UserAPI.Controllers
     [ApiController]
     public class AuthenticateController : ControllerBase
     {
-        private IConfiguration _config;
+        //private IConfiguration _config;
         private readonly UserAPIContext _context;
         private readonly IntSession _session;
 
-        public AuthenticateController(IConfiguration config, UserAPIContext context, IntSession session)
+        public AuthenticateController(UserAPIContext context, IntSession session)
         {
-            _config = config;
+            //_config = config;
             _context = context;
             _session = session;
             _session.context = _context;
@@ -69,49 +70,38 @@ namespace UserAPI.Controllers
         [Authorize]
         public ActionResult Logout()
         {
-            // optionally "revoke" JWT token on the server side --> add the current token to a block-list
-            // https://github.com/auth0/node-jsonwebtoken/issues/375
-
-            //var userName = User.Identity.Name;
-            //_jwtAuthManager.RemoveRefreshTokenByUserName(userName);
-            //_logger.LogInformation($"User [{userName}] logged out the system.");
 
             _session.Close(User.Identity.Name);
             return Ok();
         }
 
         [HttpPost("RefreshToken")]
-        [Authorize]
-        //public async Task<ActionResult> RefreshToken([FromBody] RefreshTokenRequest request)
-        public ActionResult RefreshToken()
+        //[Authorize]
+        [AllowAnonymous]
+        public IActionResult RefreshToken([FromBody] RefreshTokenRequest request)
+        //public ActionResult RefreshToken()
         {
-            /*try
+            //var userName = User.Identity.Name;
+            try
             {
-                var userName = User.Identity.Name;
-                _logger.LogInformation($"User [{userName}] is trying to refresh JWT token.");
+                //_logger.LogInformation($"User [{userName}] is trying to refresh JWT token.");
 
-                if (string.IsNullOrWhiteSpace(request.RefreshToken))
+                /*if (string.IsNullOrWhiteSpace(request.RefreshToken))
                 {
                     return Unauthorized();
-                }
+                }*/
 
-                var accessToken = await HttpContext.GetTokenAsync("Bearer", "access_token");
-                var jwtResult = _jwtAuthManager.Refresh(request.RefreshToken, accessToken, DateTime.Now);
-                _logger.LogInformation($"User [{userName}] has refreshed JWT token.");
-                return Ok(new LoginResult
-                {
-                    UserName = userName,
-                    Role = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty,
-                    AccessToken = jwtResult.AccessToken,
-                    RefreshToken = jwtResult.RefreshToken.TokenString
-                });
+                //var accessToken = await HttpContext.GetTokenAsync("Bearer", "access_token");
+                AccessToken jwtResult = _session.RefreshToken(request.AccessToken, request.RefreshToken);
+                //_logger.LogInformation($"User [{userName}] has refreshed JWT token.");
+                return Ok(new { jwtResult });
             }
             catch (SecurityTokenException e)
             {
                 return Unauthorized(e.Message); // return 401 so that the client side can redirect the user to login page
-            }*/
+            }
 
-            return NoContent();
+            //return NoContent();
         }
 
         /*private AuthModel Authenticate(LoginRequest login)

@@ -1,13 +1,13 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
+//using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json.Serialization;
-using System.Threading.Tasks;
+//using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Primitives;
@@ -23,6 +23,7 @@ namespace UserAPI.Utility
         AccessToken Start(LoginRequest login);
         void Close(string userName);
         bool isSessionValid(string userName, HttpRequest request);
+        AccessToken RefreshToken(string refreshToken, string accessToken);
         //AuthModel Authenticate(LoginRequest login);
         //string GenerateToken(AuthModel user);
     }
@@ -79,8 +80,10 @@ namespace UserAPI.Utility
         {
             //[pqa] Check if the token is still in the storage. Return true if it is.
             bool result = false;
-
+            
             StringValues token="";
+
+            //var accessToken = await HttpContext.GetTokenAsync("Bearer", "access_token");
             request.Headers.TryGetValue("Authorization", out token);
 
             var accessTokens = _usersAccessTokens.Where(t => t.Key == userName)
@@ -91,6 +94,53 @@ namespace UserAPI.Utility
                 result = true;
             }
             
+            return result;
+        }
+
+        public AccessToken RefreshToken(string accessToken, string refreshToken)
+        {
+            AccessToken result = null;
+
+            //[pqa] Decode JWT token
+            var (principal, jwtToken) = DecodeToken(accessToken);
+            string userName = principal.Identity.Name;
+
+            //[pqa] Validate tokens with the one in storage
+            if (!_usersAccessTokens.TryGetValue(userName, out var existingTokens))
+            {
+                throw new SecurityTokenException("Invalid token");
+            }
+
+            //[pqa] Decode JWT token
+            //var (principal, jwtToken) = DecodeToken(existingTokens.TokenString);
+
+            /*if (principal.Identity.Name != userName)
+            {
+                throw new SecurityTokenException("Invalid token 2");
+            }*/
+
+            //[pqa] Validate the encryption algo
+            if (jwtToken == null || !jwtToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256))
+            {
+                throw new SecurityTokenException("Invalid token");
+            }
+           
+            //[pqa] Validate the validity of the refresh token
+            if (existingTokens.refreshToken.TokenString != refreshToken || existingTokens.refreshToken.ExpireAt < DateTime.Now)
+            {
+                throw new SecurityTokenException("Invalid or expired refresh token");
+            }
+
+            AuthModel user = new AuthModel
+            {
+                UserName = userName,
+                Email = existingTokens.Email,
+                UserType = existingTokens.UserType
+            };
+
+            //[pqa] Generate tokens
+            result = GenerateTokens(user);
+
             return result;
         }
 
@@ -174,7 +224,30 @@ namespace UserAPI.Utility
             _usersAccessTokens.AddOrUpdate(accessTokens.UserName, accessTokens, (s, t) => accessTokens);
 
             return accessTokens;
-    }
+        }
+
+        public (ClaimsPrincipal, JwtSecurityToken) DecodeToken(string token)
+        {
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                throw new SecurityTokenException("Invalid token");
+            }
+            var principal = new JwtSecurityTokenHandler()
+                .ValidateToken(token,
+                    new TokenValidationParameters
+                    {
+                        ValidateIssuer = true,
+                        ValidIssuer = _config["Jwt:Issuer"],
+                        ValidateIssuerSigningKey = true,
+                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"])),
+                        ValidAudience = _config["Jwt:Issuer"],
+                        ValidateAudience = true,
+                        ValidateLifetime = false
+                        //ClockSkew = TimeSpan.FromMinutes(1)
+                    },
+                    out var validatedToken);
+            return (principal, validatedToken as JwtSecurityToken);
+        }
 
         private string GenerateRefreshTokenString()
         {
@@ -183,6 +256,7 @@ namespace UserAPI.Utility
             randomNumberGenerator.GetBytes(randomNumber);
             return Convert.ToBase64String(randomNumber);
         }
+
     }
 
     public class AccessToken
