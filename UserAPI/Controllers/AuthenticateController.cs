@@ -1,17 +1,18 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿//using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+//using System;
+//using System.Collections.Generic;
+//using System.Linq;
+//using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
-using System.IdentityModel.Tokens.Jwt;
+//using System.IdentityModel.Tokens.Jwt;
 using Microsoft.Extensions.Configuration;
 using UserAPI.Models;
-using Microsoft.IdentityModel.Tokens;
-using System.Text;
-using System.Security.Claims;
+//using Microsoft.IdentityModel.Tokens;
+//using System.Text;
+//using System.Security.Claims;
 using UserAPI.Utility;
+//using System.Numerics;
 
 namespace UserAPI.Controllers
 {
@@ -21,11 +22,15 @@ namespace UserAPI.Controllers
     {
         private IConfiguration _config;
         private readonly UserAPIContext _context;
+        private readonly IntSession _session;
 
-        public AuthenticateController(IConfiguration config, UserAPIContext context)
+        public AuthenticateController(IConfiguration config, UserAPIContext context, IntSession session)
         {
             _config = config;
             _context = context;
+            _session = session;
+            _session.context = _context;
+            //_session.config = _config;
         }
 
         [AllowAnonymous]
@@ -34,18 +39,82 @@ namespace UserAPI.Controllers
         {
             IActionResult response = Unauthorized();
 
-            var user = Authenticate(login);
+            /*var user = _session.Authenticate(login);
 
             if (user != null)
             {
-                var tokenString = GenerateToken(user);
-                response = Ok(new { token = tokenString });
+                var tokenString = _session.GenerateToken(user);
+
+                //[pqa] Start session
+                AccessToken token = null;
+                token = new AccessToken { UserName = user.UserName, TokenString = tokenString };
+                _session.Start(token);
+
+                response = Ok(new { username=user.UserName, userType = user.UserType, email = user.Email, token = tokenString });
+            }*/
+
+            //[pqa] Start the session
+            AccessToken resultingToken = _session.Start(login);
+                
+            if (resultingToken != null)
+            {
+                //response = Ok(new { username = resultingToken.UserName, userType = resultingToken.UserType, email = resultingToken.Email, token = resultingToken.TokenString });
+                response = Ok(new { resultingToken });
             }
 
             return response;
-        } 
+        }
 
-        private AuthModel Authenticate(LoginRequest login)
+        [HttpPost("Logout")]
+        [Authorize]
+        public ActionResult Logout()
+        {
+            // optionally "revoke" JWT token on the server side --> add the current token to a block-list
+            // https://github.com/auth0/node-jsonwebtoken/issues/375
+
+            //var userName = User.Identity.Name;
+            //_jwtAuthManager.RemoveRefreshTokenByUserName(userName);
+            //_logger.LogInformation($"User [{userName}] logged out the system.");
+
+            _session.Close(User.Identity.Name);
+            return Ok();
+        }
+
+        [HttpPost("RefreshToken")]
+        [Authorize]
+        //public async Task<ActionResult> RefreshToken([FromBody] RefreshTokenRequest request)
+        public ActionResult RefreshToken()
+        {
+            /*try
+            {
+                var userName = User.Identity.Name;
+                _logger.LogInformation($"User [{userName}] is trying to refresh JWT token.");
+
+                if (string.IsNullOrWhiteSpace(request.RefreshToken))
+                {
+                    return Unauthorized();
+                }
+
+                var accessToken = await HttpContext.GetTokenAsync("Bearer", "access_token");
+                var jwtResult = _jwtAuthManager.Refresh(request.RefreshToken, accessToken, DateTime.Now);
+                _logger.LogInformation($"User [{userName}] has refreshed JWT token.");
+                return Ok(new LoginResult
+                {
+                    UserName = userName,
+                    Role = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty,
+                    AccessToken = jwtResult.AccessToken,
+                    RefreshToken = jwtResult.RefreshToken.TokenString
+                });
+            }
+            catch (SecurityTokenException e)
+            {
+                return Unauthorized(e.Message); // return 401 so that the client side can redirect the user to login page
+            }*/
+
+            return NoContent();
+        }
+
+        /*private AuthModel Authenticate(LoginRequest login)
         {
             string defUserName = "";
             string defPassword = "";
@@ -78,10 +147,11 @@ namespace UserAPI.Controllers
             }
 
             return user;
-        }
+        }*/
 
-        private string GenerateToken(AuthModel user)
+        /*private string GenerateToken(AuthModel user)
         {
+            //[pqa] generate the token
             var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]));
             var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
 
@@ -98,10 +168,10 @@ namespace UserAPI.Controllers
                 _config["Jwt:Issuer"],
                 _config["Jwt:Issuer"],
                 claims: claims,
-                expires: DateTime.Now.AddMinutes(10),
+                expires: DateTime.Now.AddMinutes(Convert.ToDouble(_config["Jwt:accessTokenValidity"])),
                 signingCredentials: credentials);
 
             return new JwtSecurityTokenHandler().WriteToken(token);
-        }
+        }*/
     }
 }

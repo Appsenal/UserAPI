@@ -8,6 +8,7 @@ namespace UserAPI.Utility
 {
     public class Paginate
     {
+        //[pqa] Simple pagination. It will accept the page number and the number of rows to display.
         public static IQueryable<UserModel> PagedQuery(int pageNumber, int paginationRows, IQueryable<UserModel> query)
         {
             //int remainder = 0;

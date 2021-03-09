@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Primitives;
 using UserAPI.Models;
 using UserAPI.Utility;
 
@@ -16,10 +17,12 @@ namespace UserAPI.Controllers
     public class UsersController : ControllerBase
     {
         private readonly UserAPIContext _context;
+        private readonly IntSession _session;
 
-        public UsersController(UserAPIContext context)
+        public UsersController(UserAPIContext context, IntSession session)
         {
             _context = context;
+            _session = session;
         }
 
         // GET: api/Users
@@ -27,8 +30,14 @@ namespace UserAPI.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<UserModel>>> GetUsers()
         {
+            //[pqa] TO check if session is valid. This is to enable logout.
+            if (!_session.isSessionValid(User.Identity.Name, HttpContext.Request))
+            {
+                return Unauthorized();
+            }
+
             //[pqa] Prepare the query that will not return deleted users.
-            IQueryable<UserModel> query = _context.Users.Where(e => e.Status != 0);
+            IQueryable<UserModel> query = _context.Users.Where(e => e.Status != UserStatus.Deleted);
 
             //[pqa] Return only the user's with usertype "User"
             if (User.IsInRole(Policy.User))
@@ -50,9 +59,15 @@ namespace UserAPI.Controllers
         //public async Task<ActionResult<UserModel>> GetUserModel(long id)
         public async Task<ActionResult<IEnumerable<UserModel>>> GetUserModel(long id)
         {
+            //[pqa] TO check if session is valid. This is to enable logout.
+            if (!_session.isSessionValid(User.Identity.Name, HttpContext.Request))
+            {
+                return Unauthorized();
+            }
+
             //[pqa] Prepare the query that will not return deleted users.
             IQueryable<UserModel> query = _context.Users
-                .Where(e => e.Status != 0)
+                .Where(e => e.Status != UserStatus.Deleted)
                 .Where(e => e.Id == id); 
 
             //[pqa] Return only the user's with usertype is "User"
@@ -77,8 +92,14 @@ namespace UserAPI.Controllers
         [HttpGet("UserTypes/{userType}")]
         public async Task<ActionResult<IEnumerable<UserModel>>> GetByUserType(UserTypes userType)
         {
+            //[pqa] TO check if session is valid. This is to enable logout.
+            if (!_session.isSessionValid(User.Identity.Name, HttpContext.Request))
+            {
+                return Unauthorized();
+            }
+
             //[pqa] Prepare the query that will not return deleted users.
-            IQueryable<UserModel> query = _context.Users.Where(e => e.Status != 0);
+            IQueryable<UserModel> query = _context.Users.Where(e => e.Status != UserStatus.Deleted);
 
             //[pqa] Return only the user's if usertype is "User"
             if (User.IsInRole(Policy.User))
@@ -113,11 +134,17 @@ namespace UserAPI.Controllers
         [HttpGet("Search/{searchKey}")]
         public async Task<ActionResult<IEnumerable<UserModel>>> Search(string searchKey, [FromQuery] int? pageNumber, [FromQuery] int? pageSize)
         {
+            //[pqa] TO check if session is valid. This is to enable logout.
+            if (!_session.isSessionValid(User.Identity.Name, HttpContext.Request))
+            {
+                return Unauthorized();
+            }
+
             //int _pageNumber = pageNumber.HasValue ? pageNumber.Value : 0;
             //int _pageSize = pageSize.HasValue ? pageSize.Value : 0;
 
             //[pqa] Prepare the query that will not return deleted users.
-            IQueryable <UserModel> query = _context.Users.Where(e => e.Status != 0);
+            IQueryable <UserModel> query = _context.Users.Where(e => e.Status != UserStatus.Deleted);
 
             query = query.Where(u => u.FirstName.Contains(searchKey) || u.LastName.Contains(searchKey) || u.Email.Contains(searchKey));
 
@@ -149,7 +176,13 @@ namespace UserAPI.Controllers
         [Authorize]
         [HttpPut("{id}")]
         public async Task<IActionResult> PutUserModel(long id, [FromBody] UserModelUpdate userModelUpdate)
-        {   
+        {
+            //[pqa] TO check if session is valid. This is to enable logout.
+            if (!_session.isSessionValid(User.Identity.Name, HttpContext.Request))
+            {
+                return Unauthorized();
+            }
+
             /*if (id != userModelUpdate.Id)
             {
                 return BadRequest();
@@ -208,6 +241,12 @@ namespace UserAPI.Controllers
         [HttpPost]
         public async Task<ActionResult<UserModel>> PostUserModel(UserModel userModel)
         {
+            //[pqa] TO check if session is valid. This is to enable logout.
+            if (!_session.isSessionValid(User.Identity.Name, HttpContext.Request))
+            {
+                return Unauthorized();
+            }
+
             //[pqa] Encrypt password and add the created time/by details.
             userModel.Password = Cipher.Encrypt(userModel.Password, userModel.Email);
             userModel.CreatedTime = DateTime.Now;
@@ -224,6 +263,12 @@ namespace UserAPI.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteUserModel(long id)
         {
+            //[pqa] TO check if session is valid. This is to enable logout and invalidate the old token.
+            if (!_session.isSessionValid(User.Identity.Name, HttpContext.Request))
+            {
+                return Unauthorized();
+            }
+
             var userModel = await _context.Users.FindAsync(id);
             if (userModel == null)
             {
@@ -231,7 +276,7 @@ namespace UserAPI.Controllers
             }
 
             //[pqa] Soft delete. Just set status to zero.
-            userModel.Status = 0;
+            userModel.Status = UserStatus.Deleted;
 
             //_context.Users.Remove(userModel);
             await _context.SaveChangesAsync();

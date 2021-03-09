@@ -16,6 +16,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using UserAPI.Models;
+using UserAPI.Utility;
 
 namespace UserAPI
 {
@@ -55,7 +56,8 @@ namespace UserAPI
             });
 
             services.AddDbContext<UserAPIContext>(opt => opt.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")));
-            //services.AddControllers();  
+            
+            services.AddSingleton<IntSession, Session>();  
 
             services.AddControllers();
             services.AddSwaggerGen(c =>
