@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 
 namespace UserAPI.Models
 {
+    //[pqa] Define policy
     public class Policy
     {
         public const string Admin = "Admin";

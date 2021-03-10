@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Primitives;
 using UserAPI.Models;
 using UserAPI.Utility;
 
@@ -33,7 +32,7 @@ namespace UserAPI.Controllers
             //[pqa] TO check if session is valid. This is to enable logout.
             if (!_session.isSessionValid(User.Identity.Name, HttpContext.Request))
             {
-                return Unauthorized();
+                return Unauthorized(_session.ResponseMsg("Unauthorized", "Invalid session."));
             }
 
             //[pqa] Prepare the query that will not return deleted users.
@@ -43,14 +42,16 @@ namespace UserAPI.Controllers
             if (User.IsInRole(Policy.User))
             {
                 query = query.Where(e => e.UserType == UserTypes.User);
-                /*return await _context.Users
-                    .Where(e => e.UserType == UserTypes.User)
-                    .Where(e => e.Status != 0)
-                    .ToListAsync();*/
             }
 
+            //[pqa] Put the result in the variable so that we can check it if is returning anything
+            var getResults = await query.ToListAsync();
+            if (getResults.Count() == 0)
+            {
+                return NotFound(_session.ResponseMsg("Not Found", "Records not found."));
+            }
             //return await _context.Users.ToListAsync();
-            return await query.ToListAsync();
+            return getResults;
         }
 
         // GET: api/Users/5
@@ -62,7 +63,7 @@ namespace UserAPI.Controllers
             //[pqa] TO check if session is valid. This is to enable logout.
             if (!_session.isSessionValid(User.Identity.Name, HttpContext.Request))
             {
-                return Unauthorized();
+                return Unauthorized(_session.ResponseMsg("Unauthorized", "Invalid session."));
             }
 
             //[pqa] Prepare the query that will not return deleted users.
@@ -77,14 +78,14 @@ namespace UserAPI.Controllers
             }
 
             //[pqa] Put the result in the variable so that we can check it if is returning anything
-            var userModel = await query.ToListAsync();
+            var getResults = await query.ToListAsync();
 
-            if (userModel.Count()== 0)
+            if (getResults.Count()== 0)
             {
-                return NotFound();
+                return NotFound(_session.ResponseMsg("Not Found", "Record not found."));
             }
 
-            return userModel;
+            return getResults;
         }
 
         // GET: api/Users/UserTypes/Admin
@@ -95,7 +96,7 @@ namespace UserAPI.Controllers
             //[pqa] TO check if session is valid. This is to enable logout.
             if (!_session.isSessionValid(User.Identity.Name, HttpContext.Request))
             {
-                return Unauthorized();
+                return Unauthorized(_session.ResponseMsg("Unauthorized", "Invalid session."));
             }
 
             //[pqa] Prepare the query that will not return deleted users.
@@ -110,7 +111,7 @@ namespace UserAPI.Controllers
                 else
                 {
                     //[pqa] If the user type is "User" and the search is not "User" it should not return anything.
-                    return Unauthorized();
+                    return Unauthorized(_session.ResponseMsg("Unauthorized", "Not authorized to vew records with Admin user type."));
                 }
             }
             else 
@@ -119,14 +120,13 @@ namespace UserAPI.Controllers
             }
 
             //[pqa] Put the result in the variable so that we can check it if is returning anything
-            var userModel = await query.ToListAsync();
-
-            if (userModel.Count() == 0)
+            var getResults = await query.ToListAsync();
+            if (getResults.Count() == 0)
             {
-                return NotFound();
+                return NotFound(_session.ResponseMsg("Not Found", "Records not found."));
             }
 
-            return userModel;
+            return getResults;
         }
 
         // GET: api/Users/UserTypes/Admin
@@ -137,7 +137,7 @@ namespace UserAPI.Controllers
             //[pqa] TO check if session is valid. This is to enable logout.
             if (!_session.isSessionValid(User.Identity.Name, HttpContext.Request))
             {
-                return Unauthorized();
+                return Unauthorized(_session.ResponseMsg("Unauthorized", "Invalid session."));
             }
 
             //int _pageNumber = pageNumber.HasValue ? pageNumber.Value : 0;
@@ -161,14 +161,13 @@ namespace UserAPI.Controllers
             }
 
             //[pqa] Put the result in the variable so that we can check it if is returning anything
-            var userModel = await query.ToListAsync();
-
-            if (userModel.Count() == 0)
+            var getResults = await query.ToListAsync();
+            if (getResults.Count() == 0)
             {
-                return NotFound();
+                return NotFound(_session.ResponseMsg("Not Found", "No results to return."));
             }
 
-            return userModel;
+            return getResults;
         }
 
         // PUT: api/Users/5
@@ -180,7 +179,7 @@ namespace UserAPI.Controllers
             //[pqa] TO check if session is valid. This is to enable logout.
             if (!_session.isSessionValid(User.Identity.Name, HttpContext.Request))
             {
-                return Unauthorized();
+                return Unauthorized(_session.ResponseMsg("Unauthorized", "Invalid session."));
             }
 
             /*if (id != userModelUpdate.Id)
@@ -192,15 +191,15 @@ namespace UserAPI.Controllers
             var userModel = await _context.Users.FindAsync(id);
             if (userModel==null)
             {
-                return NotFound();
+                return NotFound(_session.ResponseMsg("Not Found", "Record id " + id + " not found."));
             }
 
-            //[pqa] Make sure that the user can only update own data.
+            //[pqa] Make sure that the user type can only update own data.
             if (User.IsInRole(Policy.User))
             {
-                if (User.Identity.Name != userModel.UserName)
+                if (User.Identity.Name.ToLower() != userModel.UserName.ToLower())
                 {
-                    return Unauthorized();
+                    return Unauthorized(_session.ResponseMsg("Unauthorized", "Not authorized to update the record."));
                 }
             }
             
@@ -224,7 +223,7 @@ namespace UserAPI.Controllers
             {
                 if (!UserModelExists(id))
                 {
-                    return NotFound();
+                    return NotFound(_session.ResponseMsg("Not Found", "Record id " + id + " not found."));
                 }
                 else
                 {
@@ -232,7 +231,7 @@ namespace UserAPI.Controllers
                 }
             }
 
-            return NoContent();
+            return Ok(_session.ResponseMsg("Success", "Record id " + id + " has been updated."));
         }
 
         // POST: api/Users
@@ -244,7 +243,7 @@ namespace UserAPI.Controllers
             //[pqa] TO check if session is valid. This is to enable logout.
             if (!_session.isSessionValid(User.Identity.Name, HttpContext.Request))
             {
-                return Unauthorized();
+                return Unauthorized(_session.ResponseMsg("Unauthorized", "Invalid session."));
             }
 
             //[pqa] Encrypt password and add the created time/by details.
@@ -266,22 +265,25 @@ namespace UserAPI.Controllers
             //[pqa] TO check if session is valid. This is to enable logout and invalidate the old token.
             if (!_session.isSessionValid(User.Identity.Name, HttpContext.Request))
             {
-                return Unauthorized();
+                return Unauthorized(_session.ResponseMsg("Unauthorized", "Invalid session."));
             }
 
+            //[pqa] Pull the data to delete
             var userModel = await _context.Users.FindAsync(id);
             if (userModel == null)
             {
-                return NotFound();
+                return NotFound(_session.ResponseMsg("Not Found", "Record id " + id + " not found."));
             }
 
-            //[pqa] Soft delete. Just set status to zero.
+            //[pqa] Soft delete. Just set status to zero and details of the update.
             userModel.Status = UserStatus.Deleted;
+            userModel.UpdatedTime = DateTime.Now;
+            userModel.UpdatedBy = User.Identity.Name;
 
             //_context.Users.Remove(userModel);
             await _context.SaveChangesAsync();
 
-            return NoContent();
+            return Ok(_session.ResponseMsg("Success", "Record id "+id+" has been deleted."));
         }
 
         private bool UserModelExists(long id)
