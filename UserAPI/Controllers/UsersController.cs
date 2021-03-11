@@ -29,16 +29,16 @@ namespace UserAPI.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<UserModel>>> GetUsers()
         {
-            //[pqa] TO check if session is valid. This is to enable logout.
+            //[pqa] Check if session is valid. If invalid, it means the user is already logged out.
             if (!_session.isSessionValid(User.Identity.Name, HttpContext.Request))
             {
                 return Unauthorized(_session.ResponseMsg("Unauthorized", "Invalid session."));
             }
 
-            //[pqa] Prepare the query that will not return deleted users.
+            //[pqa] Prepare the query. Initialize it to not return the deleted users.
             IQueryable<UserModel> query = _context.Users.Where(e => e.Status != UserStatus.Deleted);
 
-            //[pqa] Return only the user's with usertype "User"
+            //[pqa] Return only the user's with usertype "User" if the user's role/usertype is "User".
             if (User.IsInRole(Policy.User))
             {
                 query = query.Where(e => e.UserType == UserTypes.User);
@@ -66,7 +66,7 @@ namespace UserAPI.Controllers
                 return Unauthorized(_session.ResponseMsg("Unauthorized", "Invalid session."));
             }
 
-            //[pqa] Prepare the query that will not return deleted users.
+            //[pqa] Prepare the query to not return deleted users.
             IQueryable<UserModel> query = _context.Users
                 .Where(e => e.Status != UserStatus.Deleted)
                 .Where(e => e.Id == id); 
@@ -102,7 +102,7 @@ namespace UserAPI.Controllers
             //[pqa] Prepare the query that will not return deleted users.
             IQueryable<UserModel> query = _context.Users.Where(e => e.Status != UserStatus.Deleted);
 
-            //[pqa] Return only the user's if usertype is "User"
+            //[pqa] Return only the user records if usertype is "User"
             if (User.IsInRole(Policy.User))
             {
                 if (userType == UserTypes.User) {
@@ -148,7 +148,7 @@ namespace UserAPI.Controllers
 
             query = query.Where(u => u.FirstName.Contains(searchKey) || u.LastName.Contains(searchKey) || u.Email.Contains(searchKey));
 
-            //[pqa] Return only the user's if usertype is "User"
+            //[pqa] Return only the user records if usertype is "User"
             if (User.IsInRole(Policy.User))
             {
                 query = query.Where(e => e.UserType == UserTypes.User);
@@ -176,7 +176,7 @@ namespace UserAPI.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> PutUserModel(long id, [FromBody] UserModelUpdate userModelUpdate)
         {
-            //[pqa] TO check if session is valid. This is to enable logout.
+            //[pqa] Check if session is valid. This is to enable logout.
             if (!_session.isSessionValid(User.Identity.Name, HttpContext.Request))
             {
                 return Unauthorized(_session.ResponseMsg("Unauthorized", "Invalid session."));
@@ -240,7 +240,7 @@ namespace UserAPI.Controllers
         [HttpPost]
         public async Task<ActionResult<UserModel>> PostUserModel(UserModel userModel)
         {
-            //[pqa] TO check if session is valid. This is to enable logout.
+            //[pqa] Check if session is valid. This is to enable logout.
             if (!_session.isSessionValid(User.Identity.Name, HttpContext.Request))
             {
                 return Unauthorized(_session.ResponseMsg("Unauthorized", "Invalid session."));
@@ -262,7 +262,7 @@ namespace UserAPI.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteUserModel(long id)
         {
-            //[pqa] TO check if session is valid. This is to enable logout and invalidate the old token.
+            //[pqa] Check if session is valid. This is to enable logout and invalidate the old token capability.
             if (!_session.isSessionValid(User.Identity.Name, HttpContext.Request))
             {
                 return Unauthorized(_session.ResponseMsg("Unauthorized", "Invalid session."));
@@ -275,7 +275,7 @@ namespace UserAPI.Controllers
                 return NotFound(_session.ResponseMsg("Not Found", "Record id " + id + " not found."));
             }
 
-            //[pqa] Soft delete. Just set status to zero and details of the update.
+            //[pqa] Soft delete. Just set the status to 3, and the details of the update.
             userModel.Status = UserStatus.Deleted;
             userModel.UpdatedTime = DateTime.Now;
             userModel.UpdatedBy = User.Identity.Name;

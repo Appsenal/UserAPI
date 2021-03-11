@@ -1,12 +1,12 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.Linq;
 using System.Text.Json.Serialization;
-using System.Threading.Tasks;
 
 namespace UserAPI.Models
 {
+    //[pqa] This model is to handle the data classes needed in the authentication.
+
+    //[pqa] Class to hold the details of the user that will be used in authentication processes.
     public class AuthModel
     {
         public string UserName { get; set; }
@@ -16,6 +16,7 @@ namespace UserAPI.Models
         public UserStatus Status { get; set; }
     }
 
+    //[pqa] Class to hold the user credential from the login request.
     public class LoginRequest
     {
         [Required]
@@ -25,6 +26,7 @@ namespace UserAPI.Models
         public string Password { get; set; }
     }
 
+    //[pqa] Class to hold the tokens from the refresh token request.
     public class RefreshTokenRequest
     {
         [Required]
@@ -35,6 +37,8 @@ namespace UserAPI.Models
         [JsonPropertyName("refreshToken")]
         public string RefreshToken { get; set; }
     }
+
+    //[pqa] Class to hold the authentication details, including the access token and refresh token. Mostly use to facilitate the logout capability.
     public class AccessToken
     {
         [JsonPropertyName("username")]
@@ -56,6 +60,7 @@ namespace UserAPI.Models
         public RefreshToken refreshToken { get; set; }
     }
 
+    //[pqa] Details for the refresh token.
     public class RefreshToken
     {
         [JsonPropertyName("username")]
@@ -68,6 +73,7 @@ namespace UserAPI.Models
         public DateTime ExpireAt { get; set; }
     }
 
+    //[pqa] Response message.
     public class ResponseMessage
     {
         public string type { get; set; }

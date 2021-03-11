@@ -95,7 +95,7 @@ namespace UserAPI.Utility
             var (principal, jwtToken) = DecodeToken(accessToken);
             string userName = principal.Identity.Name;
 
-            //[pqa] Validate tokens with the one in storage using the username from the previous code. The related details of the token should also be returned through the existingTokens variale.
+            //[pqa] Validate tokens with the one in storage using the username from the previous code. The related details of the token should also be returned through the existingTokens variable.
             if (!_usersAccessTokens.TryGetValue(userName, out var existingTokens))
             {
                 throw new SecurityTokenException("Invalid token");
@@ -188,11 +188,12 @@ namespace UserAPI.Utility
             };
 
             //[pqa] Details needed to generate JWT token.
+            DateTime tokenExpiry = DateTime.Now.AddMinutes(Convert.ToDouble(_config["Jwt:accessTokenValidity"]));
             var token = new JwtSecurityToken(
                 _config["Jwt:Issuer"],
                 _config["Jwt:Issuer"],
                 claims: claims,
-                expires: DateTime.Now.AddMinutes(Convert.ToDouble(_config["Jwt:accessTokenValidity"])),
+                expires: tokenExpiry,
                 signingCredentials: credentials);
 
             //[pqa] Generate the refresh token and collect the resulting details.
@@ -213,6 +214,7 @@ namespace UserAPI.Utility
                 UserType = user.UserType,
                 Email = user.Email,
                 TokenString = tokenString,
+                TokenExpireAt = tokenExpiry,
                 refreshToken = refreshToken
             };
 
@@ -222,7 +224,7 @@ namespace UserAPI.Utility
             return accessTokens;
         }
 
-        public (ClaimsPrincipal, JwtSecurityToken) DecodeToken(string token)
+        private (ClaimsPrincipal, JwtSecurityToken) DecodeToken(string token)
         {
             //[pqa] Make sure that the token is provided in the argument.
             if (string.IsNullOrWhiteSpace(token))
@@ -252,6 +254,7 @@ namespace UserAPI.Utility
 
         public ResponseMessage ResponseMsg(string type, string message)
         {
+            //[pqa] Method for the response message.
             return new ResponseMessage { type = type, message = message };
         }
 

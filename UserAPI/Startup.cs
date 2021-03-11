@@ -52,6 +52,7 @@ namespace UserAPI
 
             services.AddDbContext<UserAPIContext>(opt => opt.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")));
             
+            //[pqa] Add the session service as singleton. We need its values across requests.
             services.AddSingleton<IntSession, Session>();  
 
             services.AddControllers();

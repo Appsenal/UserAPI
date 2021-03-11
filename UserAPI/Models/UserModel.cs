@@ -21,10 +21,12 @@ namespace UserAPI.Models
         InActive = 2,
         Deleted = 3
     }
+
+    //[pqa] Model use in the create request.
     public class UserModel
     {
         [Key]
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)] //[pqa] For autonumbering.
         public long Id { get; set; }
 
         [Required(ErrorMessage = "{0} is required")]
@@ -76,6 +78,7 @@ namespace UserAPI.Models
         public string UpdatedBy { get; set; }
     }
 
+    //[pqa] Model use in the update request.
     public class UserModelUpdate
     {
         //public long Id { get; set; }
@@ -85,7 +88,7 @@ namespace UserAPI.Models
         [RegularExpression(@"([a-zA-Z0-9]+)", ErrorMessage = "Invalid non-alphanumeric character(s).")]
         public string UserName { get; set; }
 
-        //[JsonIgnore] //disable this if you want the password to display in the json response.
+        //[JsonIgnore] //[pqa] disable this if you want the password to display in the json response.
         [DataType(DataType.Password)]
         [RegularExpression(@"^(?=.{8,}$)(?=.*?[a-z])(?=.*?[A-Z])(?=.*?[0-9])(?=.*?\W).*$", ErrorMessage = "{0} should at least 8 characters long, contain at least one number, both lower and uppercase letters and special characters.")]
         public string Password { get; set; }
